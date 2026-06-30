@@ -1,22 +1,17 @@
-import { useOverlay } from '@thakicloud/shared';
-import { AppShell } from '@/components/AppShell';
-import { MeetingDashboard } from '@/features/meeting/MeetingDashboard';
-import { CreateMeetingDrawer } from '@/features/meeting/CreateMeetingDrawer';
+import { useState } from 'react';
+import { HomePage } from '@/features/home/HomePage';
+import { SchedulingPage } from '@/features/scheduling/SchedulingPage';
+
+type View = 'home' | 'detail';
 
 export function App() {
-  const { openOverlay } = useOverlay();
+  const [view, setView] = useState<View>('home');
 
-  const handleCreateMeeting = () => {
-    void openOverlay({
-      component: CreateMeetingDrawer,
-      props: {},
-      options: { type: 'drawer-horizontal', size: 'md' },
-    });
-  };
+  if (view === 'detail') {
+    return <SchedulingPage onBack={() => setView('home')} />;
+  }
 
   return (
-    <AppShell activeNav="meetings" onCreateMeeting={handleCreateMeeting}>
-      <MeetingDashboard onCreateMeeting={handleCreateMeeting} />
-    </AppShell>
+    <HomePage onOpenMeeting={() => setView('detail')} onCreate={() => setView('detail')} />
   );
 }

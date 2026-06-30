@@ -1,5 +1,7 @@
 import { cn } from '@thakicloud/shared';
-import type { Member } from '@/lib/mock';
+
+/** Avatar가 필요로 하는 최소 구조 — mock.Member / scheduling.Member 모두 만족 */
+export type AvatarMember = { name: string; color: string; role?: string };
 
 type AvatarSize = 'xs' | 'sm' | 'md';
 
@@ -10,7 +12,7 @@ const SIZE_MAP: Record<AvatarSize, string> = {
 };
 
 type AvatarProps = {
-  member: Member;
+  member: AvatarMember;
   size?: AvatarSize;
   className?: string;
 };
@@ -34,7 +36,7 @@ export function Avatar({ member, size = 'sm', className }: AvatarProps) {
 }
 
 type AvatarGroupProps = {
-  members: Member[];
+  members: AvatarMember[];
   max?: number;
   size?: AvatarSize;
 };
@@ -45,8 +47,8 @@ export function AvatarGroup({ members, max = 4, size = 'sm' }: AvatarGroupProps)
   return (
     <div className="flex items-center">
       <div className="flex -space-x-2">
-        {visible.map((m) => (
-          <Avatar key={m.id} member={m} size={size} />
+        {visible.map((m, i) => (
+          <Avatar key={`${m.name}-${i}`} member={m} size={size} />
         ))}
       </div>
       {overflow > 0 && (
