@@ -1,7 +1,7 @@
-// dayfix 핵심 도메인: 6명이 다음 주 중 1시간 회의를 잡는 시나리오.
-// 설계 원칙
-//  - 가용성은 3단계: 가능(yes) / 조율 가능(maybe) / 불가(no)
-//  - 선택참여(optional) 멤버의 사정은 "후순위"로 점수에 반영 (가중치 낮음)
+// dayfix 핵심 도메인: 정해진 범위(이번 주 월~금)의 모든 시간대를 열어 응답받고,
+// 그 전체 가용성을 집계해 추천/히트맵으로 보여준다.
+//  - 가용성 3단계: 가능(yes) / 조율 가능(maybe) / 불가(no)
+//  - 선택참여(optional)는 후순위(가중치 낮음)
 
 export type Role = 'required' | 'optional';
 export type Avail = 'yes' | 'maybe' | 'no';
@@ -11,36 +11,20 @@ export type Member = {
   name: string;
   role: Role;
   color: string;
-  /** 동료의 맥락을 한눈에 보여주는 짧은 태그 (예: '화·목 외근') */
   context?: string;
   isOrganizer?: boolean;
 };
 
-export type Slot = {
-  id: string;
-  day: string;
-  dateLabel: string;
-  time: string;
-  /** 정렬·조건 필터에 쓰는 시작 시각 (24h) */
-  hour: number;
-};
-
 export type CellResponse = {
   avail: Avail;
-  /** '조율 가능'일 때 선택한 조건 preset id 들 */
   conditions?: string[];
-  /** 주관식 메모 */
   note?: string;
 };
 
-/** memberId -> slotId -> 응답 */
+/** memberId -> slotId -> 응답(오버라이드). 없으면 규칙 기반 기본값 사용 */
 export type Responses = Record<string, Record<string, CellResponse>>;
 
-// ──────────────────────────────────────────────────────────────
-// 시나리오 데이터
-// ──────────────────────────────────────────────────────────────
-
-export const CURRENT_USER_ID = 'u2'; // 김도현 (점심 직후를 피하고 싶은 사람) 시점으로 응답 데모
+export const CURRENT_USER_ID = 'u2'; // 김도현 시점
 
 export const MEMBERS: Member[] = [
   { id: 'u1', name: '한민정', role: 'required', color: '#2563eb', context: '주최자', isOrganizer: true },
@@ -50,49 +34,6 @@ export const MEMBERS: Member[] = [
   { id: 'u5', name: '박지훈', role: 'optional', color: '#ea580c', context: '화·목 외근' },
   { id: 'u6', name: '정우성', role: 'optional', color: '#16a34a' },
 ];
-
-export const SLOTS: Slot[] = [
-  { id: 's1', day: '월', dateLabel: '7/7 (월)', time: '오전 10:00', hour: 10 },
-  { id: 's2', day: '월', dateLabel: '7/7 (월)', time: '오후 3:00', hour: 15 },
-  { id: 's3', day: '화', dateLabel: '7/8 (화)', time: '오전 11:00', hour: 11 },
-  { id: 's4', day: '수', dateLabel: '7/9 (수)', time: '오전 10:00', hour: 10 },
-  { id: 's5', day: '수', dateLabel: '7/9 (수)', time: '오후 2:00', hour: 14 },
-  { id: 's6', day: '목', dateLabel: '7/10 (목)', time: '오후 1:00', hour: 13 },
-  { id: 's7', day: '목', dateLabel: '7/10 (목)', time: '오후 4:00', hour: 16 },
-  { id: 's8', day: '금', dateLabel: '7/11 (금)', time: '오전 11:00', hour: 11 },
-];
-
-// yes는 기본값이라 생략, non-yes만 명시.
-// 슬롯마다 다른 상황이 나오도록 구성 — 모두 가능 / 선택 불가 / 조율 / 필수 불가 등.
-//   s2 전원가능 · s4 선택1불가 · s5 조율1 · s7 조율2 · s6 조율+선택불가 · s3·s8 필수1불가 · s1 필수2불가
-export const INITIAL_RESPONSES: Responses = {
-  // u1 한민정: 전부 가능
-  u2: {
-    s1: { avail: 'no', note: '오전 외부 미팅' },
-    s5: { avail: 'maybe', conditions: ['avoid-lunch'], note: '점심 직후라 집중 어려워요' },
-    s6: { avail: 'maybe', conditions: ['avoid-lunch'], note: '점심 직후는 피하고 싶어요' },
-  },
-  u3: {
-    s1: { avail: 'no', note: '오전 1:1 미팅' },
-    s3: { avail: 'no', note: '기존 회의' },
-    s7: { avail: 'maybe', note: '앞뒤 일정 빠듯' },
-  },
-  u4: {
-    s8: { avail: 'no', note: '오전 반차' },
-  },
-  u5: {
-    s3: { avail: 'no', note: '화요일 외근' },
-    s6: { avail: 'no', note: '목요일 외근' },
-    s7: { avail: 'maybe', conditions: ['remote'], note: '외근 복귀 직후, 원격이면 가능' },
-  },
-  u6: {
-    s4: { avail: 'no', note: '개인 일정' },
-  },
-};
-
-export function getResponse(responses: Responses, memberId: string, slotId: string): CellResponse {
-  return responses[memberId]?.[slotId] ?? { avail: 'yes' };
-}
 
 export function getMemberById(id: string): Member | undefined {
   return MEMBERS.find((m) => m.id === id);
@@ -106,29 +47,37 @@ export function hasResponded(id: string): boolean {
 }
 
 // ──────────────────────────────────────────────────────────────
-// '조율 가능' 조건 preset — 슬롯 맥락에 맞는 것만 노출 (예측)
+// 주간 그리드 (요일 × 시간) — 범위의 모든 시간대를 연다
 // ──────────────────────────────────────────────────────────────
 
-export type ConditionPreset = {
+export const WEEK_DAYS = [
+  { key: '월', date: 7 },
+  { key: '화', date: 8 },
+  { key: '수', date: 9 },
+  { key: '목', date: 10 },
+  { key: '금', date: 11 },
+] as const;
+
+/** 업무 시간 (12시 점심 제외) */
+export const HOURS = [9, 10, 11, 13, 14, 15, 16, 17];
+
+export type Slot = {
   id: string;
-  label: string;
-  /** 이 슬롯에서 보여줄지 여부 */
-  appliesTo: (slot: Slot) => boolean;
+  dayKey: string;
+  date: number;
+  hour: number;
+  dateLabel: string;
 };
 
-export const CONDITION_PRESETS: ConditionPreset[] = [
-  { id: 'morning', label: '오전이면 가능', appliesTo: (s) => s.hour >= 13 },
-  { id: 'afternoon', label: '오후면 가능', appliesTo: (s) => s.hour < 12 },
-  { id: 'avoid-lunch', label: '점심 직후(1–2시)만 피하면', appliesTo: (s) => s.hour >= 13 && s.hour <= 14 },
-  { id: 'short', label: '30분이면 가능', appliesTo: () => true },
-  { id: 'late-start', label: '5–10분 늦게 시작하면', appliesTo: () => true },
-  { id: 'remote', label: '원격이면 가능(외근)', appliesTo: () => true },
-  { id: 'if-needed', label: '꼭 필요하면 맞출게요', appliesTo: () => true },
-];
-
-export function presetsForSlot(slot: Slot): ConditionPreset[] {
-  return CONDITION_PRESETS.filter((p) => p.appliesTo(slot)).slice(0, 6);
-}
+export const ALL_SLOTS: Slot[] = WEEK_DAYS.flatMap((d) =>
+  HOURS.map((hour) => ({
+    id: `${d.key}-${hour}`,
+    dayKey: d.key,
+    date: d.date,
+    hour,
+    dateLabel: `7/${d.date} (${d.key})`,
+  })),
+);
 
 function formatHour(h: number): string {
   const period = h < 12 ? '오전' : '오후';
@@ -136,17 +85,81 @@ function formatHour(h: number): string {
   return `${period} ${display}:00`;
 }
 
-/** 회의 길이 1시간 기준 "오전 10:00 - 오전 11:00" 형태 */
+/** 회의 길이 1시간 기준 "오전 10:00 - 오전 11:00" */
 export function slotTimeRange(slot: Slot): string {
   return `${formatHour(slot.hour)} - ${formatHour(slot.hour + 1)}`;
 }
+
+export function hourLabel(hour: number): string {
+  return formatHour(hour);
+}
+
+// ──────────────────────────────────────────────────────────────
+// 규칙 기반 기본 가용성 — 각 멤버의 일정/선호를 패턴으로 생성
+// ──────────────────────────────────────────────────────────────
+
+const YES: CellResponse = { avail: 'yes' };
+
+function generateAvail(memberId: string, slot: Slot): CellResponse {
+  const { dayKey, hour } = slot;
+  switch (memberId) {
+    case 'u2': // 김도현 — 월 오전 외부미팅 · 점심 직후 비선호
+      if (dayKey === '월' && hour <= 10) return { avail: 'no', note: '오전 외부 미팅' };
+      if (hour === 13 || hour === 14)
+        return { avail: 'maybe', conditions: ['avoid-lunch'], note: '점심 직후는 피하고 싶어요' };
+      return YES;
+    case 'u3': // 이서연 — 화 오전 외근 · 목 늦은 오후 빠듯
+      if (dayKey === '화' && hour <= 11) return { avail: 'no', note: '오전 외근' };
+      if (dayKey === '목' && hour >= 16) return { avail: 'maybe', note: '앞뒤 일정 빠듯' };
+      return YES;
+    case 'u4': // 최유나 — 금 오전 반차 · 월 오후 집중업무
+      if (dayKey === '금' && hour <= 11) return { avail: 'no', note: '오전 반차' };
+      if (dayKey === '월' && (hour === 15 || hour === 16))
+        return { avail: 'maybe', note: '집중 업무 시간' };
+      return YES;
+    case 'u5': // 박지훈(선택) — 화·목 외근
+      if (dayKey === '화') return { avail: 'no', note: '화요일 외근' };
+      if (dayKey === '목' && hour <= 13) return { avail: 'no', note: '목요일 외근' };
+      if (dayKey === '목' && hour >= 14)
+        return { avail: 'maybe', conditions: ['remote'], note: '외근 복귀, 원격이면 가능' };
+      return YES;
+    case 'u6': // 정우성(선택) — 수 오전 개인 일정 · 금 늦은 오후 마무리
+      if (dayKey === '수' && (hour === 10 || hour === 11)) return { avail: 'no', note: '개인 일정' };
+      if (dayKey === '금' && hour >= 16) return { avail: 'maybe', note: '주말 전 마무리' };
+      return YES;
+    default: // 한민정 — 전부 가능
+      return YES;
+  }
+}
+
+export function getResponse(responses: Responses, memberId: string, slot: Slot): CellResponse {
+  return responses[memberId]?.[slot.id] ?? generateAvail(memberId, slot);
+}
+
+// ──────────────────────────────────────────────────────────────
+// '조율 가능' 조건 preset
+// ──────────────────────────────────────────────────────────────
+
+export type ConditionPreset = {
+  id: string;
+  label: string;
+  appliesTo: (hour: number) => boolean;
+};
+
+export const CONDITION_PRESETS: ConditionPreset[] = [
+  { id: 'morning', label: '오전이면 가능', appliesTo: (h) => h >= 13 },
+  { id: 'afternoon', label: '오후면 가능', appliesTo: (h) => h < 12 },
+  { id: 'avoid-lunch', label: '점심 직후(1–2시)만 피하면', appliesTo: (h) => h >= 13 && h <= 14 },
+  { id: 'short', label: '30분이면 가능', appliesTo: () => true },
+  { id: 'remote', label: '원격이면 가능', appliesTo: () => true },
+];
 
 export function conditionLabel(id: string): string {
   return CONDITION_PRESETS.find((p) => p.id === id)?.label ?? id;
 }
 
 // ──────────────────────────────────────────────────────────────
-// 점수 알고리즘 — 선택참여는 후순위(가중치↓)
+// 점수 집계 — 선택참여는 후순위(가중치↓)
 // ──────────────────────────────────────────────────────────────
 
 const ROLE_WEIGHT: Record<Role, number> = { required: 1, optional: 0.25 };
@@ -157,24 +170,27 @@ export type SlotConflict = { member: Member; response: CellResponse };
 export type ScoredSlot = {
   slot: Slot;
   score: number; // 0–100
+  availableCount: number; // 가능(yes) 인원
   allRequiredAvailable: boolean;
   requiredBlocked: SlotConflict[];
   optionalBlocked: SlotConflict[];
-  negotiable: SlotConflict[]; // maybe (필수+선택)
+  negotiable: SlotConflict[];
 };
 
 export function scoreSlots(members: Member[], slots: Slot[], responses: Responses): ScoredSlot[] {
   const totalWeight = members.reduce((sum, m) => sum + ROLE_WEIGHT[m.role], 0);
 
-  const scored = slots.map<ScoredSlot>((slot) => {
+  return slots.map<ScoredSlot>((slot) => {
     let weighted = 0;
+    let availableCount = 0;
     const requiredBlocked: SlotConflict[] = [];
     const optionalBlocked: SlotConflict[] = [];
     const negotiable: SlotConflict[] = [];
 
     for (const m of members) {
-      const res = getResponse(responses, m.id, slot.id);
+      const res = getResponse(responses, m.id, slot);
       weighted += AVAIL_VALUE[res.avail] * ROLE_WEIGHT[m.role];
+      if (res.avail === 'yes') availableCount += 1;
 
       if (res.avail === 'no') {
         (m.role === 'required' ? requiredBlocked : optionalBlocked).push({ member: m, response: res });
@@ -185,21 +201,27 @@ export function scoreSlots(members: Member[], slots: Slot[], responses: Response
 
     const allRequiredAvailable = members
       .filter((m) => m.role === 'required')
-      .every((m) => getResponse(responses, m.id, slot.id).avail !== 'no');
+      .every((m) => getResponse(responses, m.id, slot).avail !== 'no');
 
     return {
       slot,
       score: Math.round((weighted / totalWeight) * 100),
+      availableCount,
       allRequiredAvailable,
       requiredBlocked,
       optionalBlocked,
       negotiable,
     };
   });
+}
 
-  // 점수 내림차순, 동점이면 필수 전원 가능 우선
-  return scored.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return Number(b.allRequiredAvailable) - Number(a.allRequiredAvailable);
-  });
+/** 전체 격자에서 추천 상위 N개 (점수 → 이른 요일/시간 순) */
+export function topSlots(scored: ScoredSlot[], n: number): ScoredSlot[] {
+  return [...scored]
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.slot.date !== b.slot.date) return a.slot.date - b.slot.date;
+      return a.slot.hour - b.slot.hour;
+    })
+    .slice(0, n);
 }
