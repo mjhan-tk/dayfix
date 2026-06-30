@@ -3,32 +3,34 @@ import { Badge, Button, Typography, useOverlay } from '@thakicloud/shared';
 import { AppShell } from '@/components/AppShell';
 import { Avatar } from '@/components/Avatar';
 import {
+  ALL_SLOTS,
   CURRENT_USER_ID,
-  INITIAL_RESPONSES,
   MEMBERS,
   RESPONDED_IDS,
-  SLOTS,
   getMemberById,
   hasResponded,
   scoreSlots,
   slotTimeRange,
+  topSlots,
   type CellResponse,
   type Responses,
   type ScoredSlot,
 } from '@/lib/scheduling';
-import { AvailabilityMatrix } from './AvailabilityMatrix';
+import { AvailabilityHeatmap } from './AvailabilityHeatmap';
 import { RespondDrawer } from './RespondDrawer';
 import { SlotDetailModal } from './SlotDetailModal';
 import { SlotRanking } from './SlotRanking';
 
 export function SchedulingPage({ onBack }: { onBack?: () => void }) {
   const { openOverlay } = useOverlay();
-  const [responses, setResponses] = useState<Responses>(INITIAL_RESPONSES);
+  const [responses, setResponses] = useState<Responses>({});
   const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>();
   const [confirmedSlotId, setConfirmedSlotId] = useState<string | undefined>();
   const [savedHint, setSavedHint] = useState(false);
 
-  const scored = useMemo(() => scoreSlots(MEMBERS, SLOTS, responses), [responses]);
+  const scored = useMemo(() => scoreSlots(MEMBERS, ALL_SLOTS, responses), [responses]);
+  const top = useMemo(() => topSlots(scored, 3), [scored]);
+  const topIds = useMemo(() => new Set(top.map((s) => s.slot.id)), [top]);
 
   const requiredCount = MEMBERS.filter((m) => m.role === 'required').length;
   const optionalCount = MEMBERS.length - requiredCount;
@@ -54,6 +56,7 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
   };
 
   const openSlotDetail = async (target: ScoredSlot) => {
+    setSelectedSlotId(target.slot.id);
     const confirmed = await openOverlay({
       component: SlotDetailModal,
       props: { scored: target },
@@ -62,7 +65,9 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
     if (confirmed) handlePick(target.slot.id);
   };
 
-  const confirmedSlot = confirmedSlotId ? SLOTS.find((s) => s.id === confirmedSlotId) : undefined;
+  const confirmedSlot = confirmedSlotId
+    ? ALL_SLOTS.find((s) => s.id === confirmedSlotId)
+    : undefined;
 
   return (
     <AppShell activeNav="meetings" primaryLabel="내 가능 시간 응답" onPrimaryAction={handleRespond} onNavHome={onBack} currentUser={me}>
@@ -91,7 +96,7 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
           <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-13">
             <span className="text-primary">✓</span>
             <span className="font-medium text-text">내 응답을 저장했어요.</span>
-            <span className="text-text-muted">바뀐 사정이 추천 점수에 바로 반영됐어요.</span>
+            <span className="text-text-muted">바뀐 사정이 추천·히트맵에 바로 반영됐어요.</span>
           </div>
         )}
 
@@ -120,7 +125,7 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
           </div>
         </div>
 
-        {/* 1층: 추천 랭킹 (결정) */}
+        {/* 추천 (결정) */}
         <section className="flex flex-col gap-3">
           <div className="flex items-end justify-between">
             <div className="flex flex-col gap-0.5">
@@ -133,23 +138,22 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
               내 가능 시간 응답
             </Button>
           </div>
-          <SlotRanking scored={scored} onOpenSlot={openSlotDetail} limit={3} />
+          <SlotRanking scored={top} onOpenSlot={openSlotDetail} />
         </section>
 
-        {/* 2층: 가용성 매트릭스 (이해·검증) */}
+        {/* 답변 결과 (이해·탐색) — 주간 전체 가용성 히트맵 */}
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-13 font-semibold text-text-muted">답변 결과</span>
             <span className="text-11 text-text-muted">
-              각자의 사정을 한눈에 — 칸에 마우스를 올리면 조건·메모를 볼 수 있어요. 시간을 클릭하면 해당 열이 강조돼요.
+              이번 주 전체 시간대 가용성 — 진할수록 가능 인원이 많아요. 칸을 누르면 자세히 보고 확정할 수 있어요.
             </span>
           </div>
-          <AvailabilityMatrix
-            members={MEMBERS}
-            slots={SLOTS}
-            responses={responses}
+          <AvailabilityHeatmap
+            scored={scored}
+            topIds={topIds}
             selectedSlotId={selectedSlotId}
-            onSelectSlot={setSelectedSlotId}
+            onOpenSlot={openSlotDetail}
           />
         </section>
       </div>
