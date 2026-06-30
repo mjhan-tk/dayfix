@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+.claude
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+npm-debug.log*
+pnpm-debug.log*
+.env
+.env.*
+!.env.example
