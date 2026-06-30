@@ -20,11 +20,13 @@ function Cell({
   slot,
   responses,
   highlighted,
+  dim,
 }: {
   member: Member;
   slot: Slot;
   responses: Responses;
   highlighted: boolean;
+  dim?: boolean;
 }) {
   const res = getResponse(responses, member.id, slot.id);
   const glyph = AVAIL_GLYPH[res.avail];
@@ -46,6 +48,7 @@ function Cell({
       className={cn(
         'flex h-11 items-center justify-center border-b border-l border-border text-15',
         highlighted && 'bg-primary/5',
+        dim && 'opacity-50',
       )}
     >
       <span className={cn('relative leading-none', glyph.cls)}>
@@ -67,7 +70,7 @@ function Cell({
 
 function MemberLabel({ member }: { member: Member }) {
   return (
-    <div className="flex h-11 items-center gap-2 border-b border-border pl-3 pr-2">
+    <div className="sticky left-0 z-10 flex h-11 items-center gap-2 border-b border-r border-border bg-surface pl-3 pr-2">
       <Avatar member={member} size="xs" />
       <div className="flex min-w-0 flex-col">
         <span className="flex items-center gap-1 text-13 font-medium text-text">
@@ -100,11 +103,11 @@ export function AvailabilityMatrix({
   const required = members.filter((m) => m.role === 'required');
   const optional = members.filter((m) => m.role === 'optional');
 
-  const gridCols = `200px repeat(${slots.length}, minmax(64px, 1fr))`;
+  const gridCols = `160px repeat(${slots.length}, minmax(60px, 1fr))`;
 
   const HeaderRow = (
     <div className="grid" style={{ gridTemplateColumns: gridCols }}>
-      <div className="flex items-end border-b border-border px-3 pb-2 text-12 font-medium text-text-muted">
+      <div className="sticky left-0 z-20 flex items-end border-b border-r border-border bg-surface px-3 pb-2 text-12 font-medium text-text-muted">
         멤버 \ 시간
       </div>
       {slots.map((slot) => (
@@ -128,11 +131,7 @@ export function AvailabilityMatrix({
 
   const renderMemberRows = (group: Member[]) =>
     group.map((member) => (
-      <div
-        key={member.id}
-        className={cn('grid', member.role === 'optional' && 'opacity-70')}
-        style={{ gridTemplateColumns: gridCols }}
-      >
+      <div key={member.id} className="grid" style={{ gridTemplateColumns: gridCols }}>
         <MemberLabel member={member} />
         {slots.map((slot) => (
           <Cell
@@ -141,6 +140,7 @@ export function AvailabilityMatrix({
             slot={slot}
             responses={responses}
             highlighted={selectedSlotId === slot.id}
+            dim={member.role === 'optional'}
           />
         ))}
       </div>
@@ -149,18 +149,18 @@ export function AvailabilityMatrix({
   return (
     <div className="rounded-xl border border-border bg-surface">
       {/* 범례 */}
-      <div className="flex items-center gap-4 border-b border-border px-4 py-2.5 text-12 text-text-muted">
-        <span className="font-medium text-text">가용성</span>
-        <span className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-4 py-2.5 text-12 text-text-muted">
+        <span className="shrink-0 whitespace-nowrap font-medium text-text">가용성</span>
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
           <span className="text-[#16a34a]">●</span> 가능
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
           <span className="text-[#d97706]">◐</span> 조율 가능
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
           <span className="text-[#dc2626]">✕</span> 불가
         </span>
-        <span className="ml-auto flex items-center gap-1">
+        <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
           <span className="h-1.5 w-1.5 rounded-full bg-[#d97706]" /> 조건·메모 있음
         </span>
       </div>

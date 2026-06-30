@@ -1,82 +1,31 @@
-import { useMemo } from 'react';
-import { Badge, Button, Typography } from '@thakicloud/shared';
+import { useMemo, useState } from 'react';
+import {
+  AdjustmentsAltIcon,
+  Badge,
+  Button,
+  CheckIcon,
+  ContextMenu,
+  Typography,
+} from '@thakicloud/shared';
 import { AppShell } from '@/components/AppShell';
-import { Avatar, AvatarGroup } from '@/components/Avatar';
 import { getMemberById, CURRENT_USER_ID } from '@/lib/scheduling';
-import { COORD_ITEMS, UPCOMING, type CoordItem, type UpcomingMeeting } from '@/lib/home';
+import { sortedCoord, type CoordMeeting, type CoordSort } from '@/lib/home';
+import { UpcomingPanel } from './UpcomingPanel';
 
-function UpcomingRow({ meeting }: { meeting: UpcomingMeeting }) {
-  const members = meeting.participantIds
-    .map((id) => getMemberById(id))
-    .filter((m): m is NonNullable<typeof m> => Boolean(m));
+// 잉크(어두운 무채색) 버튼 — TDS엔 dark solid 변형이 없어 디자인 토큰으로 입힌다.
+const INK_BUTTON_STYLE: React.CSSProperties = {
+  backgroundColor: 'var(--semantic-color-text)',
+  borderColor: 'var(--semantic-color-text)',
+  color: 'var(--semantic-color-surface)',
+};
 
-  return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4">
-      <div className="flex w-16 shrink-0 flex-col border-r border-border pr-4">
-        <span className="text-12 font-medium text-text-muted">{meeting.dayLabel}</span>
-        <span className="text-14 font-semibold text-text">{meeting.time.split(' – ')[0]}</span>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-14 font-semibold text-text">{meeting.title}</span>
-        <span className="text-12 text-text-muted">{meeting.location}</span>
-      </div>
-      <AvatarGroup members={members} max={4} size="xs" />
-    </div>
-  );
-}
+// 미정(조율 중) 카드 한 종류 — dot·진행·버튼 위계로 항목이 자기 상태를 설명한다.
+function CoordCard({ item, onOpen }: { item: CoordMeeting; onOpen: () => void }) {
+  const by = getMemberById(item.byId);
+  const isMine = item.byId === CURRENT_USER_ID;
+  const pct = Math.round((item.responded / item.total) * 100);
+  const showNewDot = Boolean(item.isNew) && !item.iResponded;
 
-function CoordCard({ item, onOpen }: { item: CoordItem; onOpen: () => void }) {
-  const by = item.byId ? getMemberById(item.byId) : undefined;
-
-  if (item.kind === 'invite') {
-    return (
-      <div className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-surface p-4">
-        <div className="flex items-start gap-3">
-          {by && <Avatar member={by} size="sm" />}
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-13 font-semibold text-text">{item.title}</span>
-            <span className="text-12 text-text-muted">
-              {by?.name}님이 {item.meta}
-            </span>
-          </div>
-          <Badge theme="blu" size="sm">
-            새 초대
-          </Badge>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="primary" size="sm" onClick={onOpen}>
-            응답하기
-          </Button>
-          <Button variant="secondary" appearance="outline" size="sm">
-            나중에
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (item.kind === 'progress') {
-    const pct = item.total ? Math.round(((item.responded ?? 0) / item.total) * 100) : 0;
-    return (
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex w-full flex-col gap-2 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-primary/40"
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-13 font-medium text-text">{item.title}</span>
-          <span className="text-12 text-text-muted">
-            {item.responded}/{item.total} 응답
-          </span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-        </div>
-      </button>
-    );
-  }
-
-  // respond / confirm
   return (
     <div
       role="button"
@@ -85,34 +34,105 @@ function CoordCard({ item, onOpen }: { item: CoordItem; onOpen: () => void }) {
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onOpen();
       }}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-primary/40"
+      className="flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary/40"
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-13 font-medium text-text">{item.title}</span>
-        <span className="text-12 text-text-muted">
-          {item.kind === 'confirm' ? item.meta : `주최 ${by?.name ?? '-'}`}
-        </span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="flex items-center gap-1.5">
+            {showNewDot && (
+              <span
+                className="inline-flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded bg-primary px-1 text-[10px] font-bold leading-none text-white"
+                aria-label="새 초대"
+              >
+                N
+              </span>
+            )}
+            <span className="truncate text-13 font-semibold text-text">{item.title}</span>
+          </span>
+          <span className="text-12 text-text-muted">
+            {isMine ? '내가 주최' : `주최 ${by?.name ?? '-'}`}
+          </span>
+        </div>
+        {item.deadline && (
+          <Badge theme={item.deadlineUrgent ? 'red' : 'gry'} size="sm">
+            {item.deadline}
+          </Badge>
+        )}
       </div>
-      {item.kind === 'respond' && item.deadline && (
-        <Badge theme={item.deadlineUrgent ? 'red' : 'gry'} size="sm">
-          {item.deadline}
-        </Badge>
-      )}
-      {item.kind === 'confirm' && (
-        <Button variant="primary" size="sm">
-          확정
-        </Button>
-      )}
+
+      <div className="flex items-center gap-3">
+        <div className="flex flex-1 items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
+            <div className="h-full rounded-full bg-text-muted" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="shrink-0 text-11 text-text-muted">
+            {item.responded}/{item.total} 응답
+          </span>
+        </div>
+        {item.canConfirm ? (
+          <Button variant="secondary" appearance="outline" size="sm" style={INK_BUTTON_STYLE}>
+            확정하기
+          </Button>
+        ) : !item.iResponded ? (
+          <Button variant="primary" size="sm">
+            응답하기
+          </Button>
+        ) : (
+          <Button variant="secondary" appearance="outline" size="sm">
+            응답 수정
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+const SORT_OPTIONS: { id: CoordSort; label: string }[] = [
+  { id: 'recent', label: '최신순' },
+  { id: 'deadline', label: '마감순' },
+];
+
+function SortMenu({ sort, onChange }: { sort: CoordSort; onChange: (s: CoordSort) => void }) {
+  return (
+    <ContextMenu.Root
+      direction="bottom-end"
+      trigger={({ toggle }) => (
+        <Button variant="secondary" appearance="ghost" size="icon-only" onClick={toggle} aria-label="정렬">
+          <AdjustmentsAltIcon size="sm" />
+        </Button>
+      )}
+    >
+      {SORT_OPTIONS.map((opt) => (
+        <ContextMenu.Item key={opt.id} action={() => onChange(opt.id)}>
+          <span className="flex items-center gap-2">
+            <CheckIcon size="xs" className={sort === opt.id ? 'opacity-100' : 'opacity-0'} />
+            {opt.label}
+          </span>
+        </ContextMenu.Item>
+      ))}
+    </ContextMenu.Root>
+  );
+}
+
+function Section({
+  title,
+  hint,
+  right,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-13 font-semibold text-text-muted">{title}</span>
-        {hint && <span className="text-11 text-text-muted">{hint}</span>}
+      <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-13 font-semibold text-text-muted">{title}</span>
+          {hint && <span className="text-11 text-text-muted">{hint}</span>}
+        </div>
+        {right}
       </div>
       <div className="flex flex-col gap-2.5">{children}</div>
     </div>
@@ -127,13 +147,8 @@ export function HomePage({
   onCreate: () => void;
 }) {
   const me = getMemberById(CURRENT_USER_ID)!;
-  const today = useMemo(() => UPCOMING.filter((m) => m.group === 'today'), []);
-  const week = useMemo(() => UPCOMING.filter((m) => m.group === 'week'), []);
-
-  const invites = COORD_ITEMS.filter((c) => c.kind === 'invite');
-  const responds = COORD_ITEMS.filter((c) => c.kind === 'respond');
-  const confirms = COORD_ITEMS.filter((c) => c.kind === 'confirm');
-  const progresses = COORD_ITEMS.filter((c) => c.kind === 'progress');
+  const [sort, setSort] = useState<CoordSort>('recent');
+  const coord = useMemo(() => sortedCoord(sort), [sort]);
 
   return (
     <AppShell activeNav="meetings" primaryLabel="새 회의" onPrimaryAction={onCreate} currentUser={me}>
@@ -146,50 +161,20 @@ export function HomePage({
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
-          {/* 예정된 일정 */}
-          <div className="flex flex-col gap-6">
-            <Section title="예정된 일정 · 오늘">
-              {today.map((m) => (
-                <UpcomingRow key={m.id} meeting={m} />
-              ))}
-            </Section>
-            <Section title="이번 주">
-              {week.map((m) => (
-                <UpcomingRow key={m.id} meeting={m} />
-              ))}
-            </Section>
-          </div>
+          {/* 정해진 것 — 예정된 일정 (리스트 / 주간 / 캘린더 뷰) */}
+          <UpcomingPanel />
 
-          {/* 조율 인박스 */}
+          {/* 미정 — 조율 중 (한 리스트) */}
           <div className="flex flex-col gap-6">
-            {invites.length > 0 && (
-              <Section title="조율 초대">
-                {invites.map((c) => (
-                  <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} />
-                ))}
-              </Section>
-            )}
-            {responds.length > 0 && (
-              <Section title="내 응답 대기" hint="내가 응답해야 일정이 잡혀요">
-                {responds.map((c) => (
-                  <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} />
-                ))}
-              </Section>
-            )}
-            {confirms.length > 0 && (
-              <Section title="확정할 수 있어요">
-                {confirms.map((c) => (
-                  <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} />
-                ))}
-              </Section>
-            )}
-            {progresses.length > 0 && (
-              <Section title="진행 중인 조율">
-                {progresses.map((c) => (
-                  <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} />
-                ))}
-              </Section>
-            )}
+            <Section
+              title="조율 중"
+              hint="아직 시간이 정해지지 않은 회의"
+              right={<SortMenu sort={sort} onChange={setSort} />}
+            >
+              {coord.map((c) => (
+                <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} />
+              ))}
+            </Section>
           </div>
         </div>
       </div>

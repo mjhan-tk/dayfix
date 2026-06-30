@@ -62,20 +62,22 @@ export const SLOTS: Slot[] = [
   { id: 's8', day: '금', dateLabel: '7/11 (금)', time: '오전 11:00', hour: 11 },
 ];
 
-// yes는 기본값이라 생략, non-yes만 명시
+// yes는 기본값이라 생략, non-yes만 명시.
+// 슬롯마다 다른 상황이 나오도록 구성 — 모두 가능 / 선택 불가 / 조율 / 필수 불가 등.
+//   s2 전원가능 · s4 선택1불가 · s5 조율1 · s7 조율2 · s6 조율+선택불가 · s3·s8 필수1불가 · s1 필수2불가
 export const INITIAL_RESPONSES: Responses = {
-  u1: { s2: { avail: 'maybe', note: '앞 회의 끝나고 바로라 빠듯' } },
+  // u1 한민정: 전부 가능
   u2: {
     s1: { avail: 'no', note: '오전 외부 미팅' },
     s5: { avail: 'maybe', conditions: ['avoid-lunch'], note: '점심 직후라 집중 어려워요' },
     s6: { avail: 'maybe', conditions: ['avoid-lunch'], note: '점심 직후는 피하고 싶어요' },
   },
   u3: {
+    s1: { avail: 'no', note: '오전 1:1 미팅' },
     s3: { avail: 'no', note: '기존 회의' },
     s7: { avail: 'maybe', note: '앞뒤 일정 빠듯' },
   },
   u4: {
-    s2: { avail: 'maybe', note: '월요일 오후 집중업무' },
     s8: { avail: 'no', note: '오전 반차' },
   },
   u5: {
@@ -84,7 +86,6 @@ export const INITIAL_RESPONSES: Responses = {
     s7: { avail: 'maybe', conditions: ['remote'], note: '외근 복귀 직후, 원격이면 가능' },
   },
   u6: {
-    s1: { avail: 'maybe', note: '오전 집중 시간' },
     s4: { avail: 'no', note: '개인 일정' },
   },
 };
@@ -95,6 +96,13 @@ export function getResponse(responses: Responses, memberId: string, slotId: stri
 
 export function getMemberById(id: string): Member | undefined {
   return MEMBERS.find((m) => m.id === id);
+}
+
+/** 가용성 응답을 마친 멤버 (나머지는 응답 대기) */
+export const RESPONDED_IDS = new Set(['u1', 'u2', 'u3', 'u4']);
+
+export function hasResponded(id: string): boolean {
+  return RESPONDED_IDS.has(id);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -120,6 +128,17 @@ export const CONDITION_PRESETS: ConditionPreset[] = [
 
 export function presetsForSlot(slot: Slot): ConditionPreset[] {
   return CONDITION_PRESETS.filter((p) => p.appliesTo(slot)).slice(0, 6);
+}
+
+function formatHour(h: number): string {
+  const period = h < 12 ? '오전' : '오후';
+  const display = h % 12 === 0 ? 12 : h % 12;
+  return `${period} ${display}:00`;
+}
+
+/** 회의 길이 1시간 기준 "오전 10:00 - 오전 11:00" 형태 */
+export function slotTimeRange(slot: Slot): string {
+  return `${formatHour(slot.hour)} - ${formatHour(slot.hour + 1)}`;
 }
 
 export function conditionLabel(id: string): string {
