@@ -29,7 +29,7 @@ export function AppShell({
   return (
     <div className="flex min-h-full flex-col bg-surface-muted">
       <header className="sticky top-0 z-10 border-b border-border bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center gap-8 px-6">
+        <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center gap-4 px-4 sm:gap-8 sm:px-6">
           {/* 워드마크 */}
           <button type="button" onClick={onNavHome} className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-14 font-bold text-white">
@@ -39,7 +39,7 @@ export function AppShell({
           </button>
 
           {/* 내비게이션 */}
-          <nav className="flex items-center gap-1">
+          <nav className="hidden items-center gap-1 sm:flex">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -67,7 +67,7 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1120px] flex-1 px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>
   );
 }
