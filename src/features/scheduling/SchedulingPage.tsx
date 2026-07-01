@@ -139,12 +139,7 @@ export function SchedulingPage({
         {/* 추천 (결정) */}
         <section className="flex flex-col gap-3">
           <div className="flex items-end justify-between gap-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-13 font-semibold text-text-muted">추천 시간</span>
-              <span className="text-11 text-text-muted">
-                카드를 누르면 자세히 보고 확정할 수 있어요.
-              </span>
-            </div>
+            <span className="text-13 font-semibold text-text-muted">추천 시간</span>
             <Button variant="primary" size="sm" onClick={handleRespond}>
               내 가능 시간 응답
             </Button>
@@ -156,9 +151,7 @@ export function SchedulingPage({
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-13 font-semibold text-text-muted">답변 결과</span>
-            <span className="text-11 text-text-muted">
-              진할수록 가능 인원이 많아요. 칸을 누르면 자세히 보고 확정할 수 있어요.
-            </span>
+            <span className="text-11 text-text-muted">진할수록 가능 인원이 많아요.</span>
           </div>
           <AvailabilityHeatmap
             scored={scored}

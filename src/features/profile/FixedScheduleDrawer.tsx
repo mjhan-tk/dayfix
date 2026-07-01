@@ -65,7 +65,7 @@ export function FixedScheduleDrawer({ onConfirm, onCancel, ...restProps }: Fixed
     <ResponsiveDrawer
       {...restProps}
       title="내 고정 스케줄"
-      description="매번 반복되는 일정·선호를 등록해두면 회의마다 자동으로 채워져요."
+      description="반복되는 일정·선호를 등록해두세요."
       onCancel={onCancel}
       onConfirm={() => onConfirm?.()}
       cancelUI="취소"

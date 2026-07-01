@@ -76,7 +76,7 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
   return (
     <ResponsiveDrawer
       {...restProps}
-      title={`${member.name}님, 가능한 시간을 알려주세요`}
+      title="가능한 시간 알려주기"
       description="드래그해 가능·조율·불가를 표시하세요."
       onCancel={onCancel}
       onConfirm={handleConfirm}

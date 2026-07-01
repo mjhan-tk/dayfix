@@ -54,7 +54,7 @@ export function CreateMeetingDrawer({ onConfirm, onCancel, ...restProps }: Creat
     <ResponsiveDrawer
       {...restProps}
       title="새 회의 만들기"
-      description="기본 정보를 입력하면 모두 가능한 시간을 추천해드려요."
+      description="모두 가능한 시간을 찾아드려요."
       onCancel={onCancel}
       onConfirm={() => onConfirm?.({ title: title.trim(), total: selectedIds.length })}
       cancelUI="취소"

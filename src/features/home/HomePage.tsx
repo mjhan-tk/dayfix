@@ -197,12 +197,7 @@ export function HomePage({
       currentUser={me}
     >
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <Typography.Title level={3}>안녕하세요, {me.name}님</Typography.Title>
-          <Typography.Text variant="paragraph" color="text-muted">
-            오늘 일정과 조율 중인 회의를 한눈에 확인하세요.
-          </Typography.Text>
-        </div>
+        <Typography.Title level={3}>안녕하세요, {me.name}님</Typography.Title>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.7fr_1fr]">
           {/* 정해진 것 — 예정된 일정 (리스트 / 주간 / 캘린더 뷰) */}
@@ -210,11 +205,7 @@ export function HomePage({
 
           {/* 미정 — 조율 중 (한 리스트) */}
           <div className="flex flex-col gap-6">
-            <Section
-              title="조율 중"
-              hint="아직 시간이 정해지지 않은 회의"
-              right={<SortMenu sort={sort} onChange={setSort} />}
-            >
+            <Section title="조율 중" right={<SortMenu sort={sort} onChange={setSort} />}>
               {sortedList.map((c) => (
                 <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} onRespond={handleRespond} />
               ))}
