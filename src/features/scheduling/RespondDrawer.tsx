@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { Textarea, cn, type OverlayProps } from '@thakicloud/shared';
+import { RefreshIcon, Textarea, cn, type OverlayProps } from '@thakicloud/shared';
 import { ResponsiveDrawer } from '@/components/ResponsiveDrawer';
 import {
   ALL_SLOTS,
@@ -25,10 +25,13 @@ type RespondDrawerProps = Omit<OverlayProps, 'onConfirm'> & {
 };
 
 export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: RespondDrawerProps) {
-  const [draft, setDraft] = useState<Record<string, Avail>>(() =>
-    Object.fromEntries(ALL_SLOTS.map((s) => [s.id, getResponse({}, member.id, s).avail])),
-  );
+  // 캘린더 기반 초기 응답(되돌리기 기준)
+  const initialDraft = (): Record<string, Avail> =>
+    Object.fromEntries(ALL_SLOTS.map((s) => [s.id, getResponse({}, member.id, s).avail]));
+
+  const [draft, setDraft] = useState<Record<string, Avail>>(initialDraft);
   const [memo, setMemo] = useState('');
+  const [spinning, setSpinning] = useState(false);
 
   // 드래그: 지나는 칸을 각자 한 단계씩 순환. touched로 드래그당 칸마다 1회만 적용
   const dragging = useRef(false);
@@ -55,6 +58,13 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
     step(id);
   };
 
+  const reset = () => {
+    setDraft(initialDraft());
+    setMemo('');
+    setSpinning(true);
+    window.setTimeout(() => setSpinning(false), 500);
+  };
+
   const handleConfirm = () => {
     const result: Record<string, CellResponse> = {};
     for (const s of ALL_SLOTS) {
@@ -75,13 +85,25 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
     >
       <div className="flex flex-col gap-5 pt-3">
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3 text-11 text-text-muted">
-            {(['yes', 'maybe', 'no'] as Avail[]).map((a) => (
-              <span key={a} className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: CELL_STYLE[a].bg }} />
-                {CELL_STYLE[a].label}
+          <div className="flex items-center justify-between text-11 text-text-muted">
+            <div className="flex items-center gap-3">
+              {(['yes', 'maybe', 'no'] as Avail[]).map((a) => (
+                <span key={a} className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: CELL_STYLE[a].bg }} />
+                  {CELL_STYLE[a].label}
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={reset}
+              className="flex items-center gap-1 text-text-muted transition-colors hover:text-text"
+            >
+              <span className={cn('flex', spinning && 'animate-spin')}>
+                <RefreshIcon size="xs" />
               </span>
-            ))}
+              되돌리기
+            </button>
           </div>
 
           <div
