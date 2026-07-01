@@ -30,11 +30,14 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [spinning, setSpinning] = useState(false);
+  const [toast, setToast] = useState(false);
 
   const handleRefresh = () => {
     setSpinning(true);
+    setToast(true);
     onRefresh?.();
     window.setTimeout(() => setSpinning(false), 700);
+    window.setTimeout(() => setToast(false), 1800);
   };
 
   return (
@@ -98,6 +101,12 @@ export function AppShell({
       </header>
 
       <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[1100] -translate-x-1/2 rounded-lg bg-text px-4 py-2 text-13 font-medium text-surface shadow-modal">
+          이미 최신이에요
+        </div>
+      )}
     </div>
   );
 }

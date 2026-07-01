@@ -4,36 +4,42 @@ import { HOURS, WEEK_DAYS, type ScoredSlot } from '@/lib/scheduling';
 
 const GRAY_BLOCKED = '#EEF0F2';
 
-// 가능 인원수 → 색 (파스텔 초록 단일 톤: 1–3 연함 / 4–5 중간 / 6 진함)
+// 가능 인원 비율 → 색 (파스텔 초록 단일 톤: 소수 연함 / 과반 중간 / 전원 진함)
 const GREEN = {
-  light: '#DCF1E4', // 1–3
-  medium: '#A6D8B8', // 4–5
-  dark: '#6CBF92', // 6
+  light: '#DCF1E4',
+  medium: '#A6D8B8',
+  dark: '#6CBF92',
 };
 
-function cellBg(count: number): string {
-  if (count >= 6) return GREEN.dark;
-  if (count >= 4) return GREEN.medium;
+// 응답자(total) 대비 비율로 색 결정 — 미응답자를 빼도 의미가 유지됨
+function cellBg(count: number, total: number): string {
+  if (total <= 0) return GREEN.light;
+  const ratio = count / total;
+  if (ratio >= 0.999) return GREEN.dark; // 응답자 전원 가능
+  if (ratio >= 0.5) return GREEN.medium; // 과반 가능
   return GREEN.light;
 }
 
 type AvailabilityHeatmapProps = {
   scored: ScoredSlot[];
+  total: number;
   selectedSlotId?: string;
   onOpenSlot: (scored: ScoredSlot) => void;
 };
 
 function HeatCell({
   sc,
+  total,
   selected,
   onOpen,
 }: {
   sc: ScoredSlot;
+  total: number;
   selected: boolean;
   onOpen: () => void;
 }) {
   const blocked = sc.requiredBlocked.length > 0;
-  const bg = blocked ? GRAY_BLOCKED : cellBg(sc.availableCount);
+  const bg = blocked ? GRAY_BLOCKED : cellBg(sc.availableCount, total);
 
   const tip = `${sc.availableCount}명 가능 · 조율 ${sc.negotiable.length} · 불가 ${
     sc.requiredBlocked.length + sc.optionalBlocked.length
@@ -60,6 +66,7 @@ function HeatCell({
 
 export function AvailabilityHeatmap({
   scored,
+  total,
   selectedSlotId,
   onOpenSlot,
 }: AvailabilityHeatmapProps) {
@@ -105,6 +112,7 @@ export function AvailabilityHeatmap({
                 <HeatCell
                   key={id}
                   sc={sc}
+                  total={total}
                   selected={selectedSlotId === id}
                   onOpen={() => onOpenSlot(sc)}
                 />

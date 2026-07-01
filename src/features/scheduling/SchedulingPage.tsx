@@ -36,7 +36,13 @@ export function SchedulingPage({
   const [confirmedSlotId, setConfirmedSlotId] = useState<string | undefined>();
   const [savedHint, setSavedHint] = useState(false);
 
-  const scored = useMemo(() => scoreSlots(MEMBERS, ALL_SLOTS, responses), [responses]);
+  // 집계·추천은 실제 응답한 사람만 반영(미응답자 기본값으로 인원을 부풀리지 않음)
+  const respondedMembers = useMemo(() => MEMBERS.filter((m) => hasResponded(m.id)), []);
+  const votingComplete = respondedMembers.length === MEMBERS.length;
+  const scored = useMemo(
+    () => scoreSlots(respondedMembers, ALL_SLOTS, responses),
+    [respondedMembers, responses],
+  );
   const top = useMemo(() => topSlots(scored, 3), [scored]);
 
   const requiredCount = MEMBERS.filter((m) => m.role === 'required').length;
@@ -144,17 +150,29 @@ export function SchedulingPage({
               내 가능 시간 응답
             </Button>
           </div>
-          <SlotRanking scored={top} onOpenSlot={openSlotDetail} />
+          {votingComplete ? (
+            <SlotRanking scored={top} onOpenSlot={openSlotDetail} />
+          ) : (
+            <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-border bg-surface px-4 py-8 text-center">
+              <span className="text-13 font-medium text-text">아직 응답을 모으는 중이에요</span>
+              <span className="text-12 text-text-muted">
+                {MEMBERS.length}명 모두 응답하면 추천 시간을 알려드려요 · {respondedCount}/{MEMBERS.length}
+              </span>
+            </div>
+          )}
         </section>
 
         {/* 답변 결과 (이해·탐색) — 주간 전체 가용성 히트맵 */}
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-13 font-semibold text-text-muted">답변 결과</span>
-            <span className="text-11 text-text-muted">진할수록 가능 인원이 많아요.</span>
+            <span className="text-11 text-text-muted">
+              진할수록 가능 인원이 많아요 · {respondedCount}/{MEMBERS.length} 응답
+            </span>
           </div>
           <AvailabilityHeatmap
             scored={scored}
+            total={respondedCount}
             selectedSlotId={selectedSlotId}
             onOpenSlot={openSlotDetail}
           />
