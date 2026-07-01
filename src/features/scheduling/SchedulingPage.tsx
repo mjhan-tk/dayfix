@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Typography, useOverlay } from '@thakicloud/shared';
+import { Button, CheckIcon, Typography, useOverlay } from '@thakicloud/shared';
 import { AppShell } from '@/components/AppShell';
 import { Avatar } from '@/components/Avatar';
 import {
@@ -124,15 +124,28 @@ export function SchedulingPage({
         <div className="flex flex-col gap-3">
           <Typography.Title level={3}>디자인 시스템 스프린트 킥오프</Typography.Title>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="flex -space-x-1.5">
-              {MEMBERS.map((m) => (
-                <Avatar
-                  key={m.id}
-                  member={m}
-                  size="sm"
-                  className={hasResponded(m.id) ? undefined : 'opacity-30'}
-                />
-              ))}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {MEMBERS.map((m) => {
+                const voted = hasResponded(m.id);
+                return (
+                  <span key={m.id} className="relative inline-flex">
+                    <Avatar
+                      member={m}
+                      size="sm"
+                      className={
+                        voted
+                          ? 'ring-2 ring-[#16a34a] ring-offset-2 ring-offset-surface'
+                          : 'opacity-30'
+                      }
+                    />
+                    {voted && (
+                      <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#16a34a] ring-2 ring-surface">
+                        <CheckIcon size="xs" className="text-white" />
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
             <span className="text-12 text-text-muted">
               <span className="font-medium text-text">{respondedCount}/{MEMBERS.length}</span> 응답
@@ -156,7 +169,7 @@ export function SchedulingPage({
             <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-border bg-surface px-4 py-8 text-center">
               <span className="text-13 font-medium text-text">아직 응답을 모으는 중이에요</span>
               <span className="text-12 text-text-muted">
-                {MEMBERS.length}명 모두 응답하면 추천 시간을 알려드려요 · {respondedCount}/{MEMBERS.length}
+                {MEMBERS.length}명 모두 응답하면 추천 시간을 알려드려요
               </span>
             </div>
           )}
@@ -166,9 +179,7 @@ export function SchedulingPage({
         <section className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-13 font-semibold text-text-muted">답변 결과</span>
-            <span className="text-11 text-text-muted">
-              진할수록 가능 인원이 많아요 · {respondedCount}/{MEMBERS.length} 응답
-            </span>
+            <span className="text-11 text-text-muted">진할수록 가능 인원이 많아요.</span>
           </div>
           <AvailabilityHeatmap
             scored={scored}
