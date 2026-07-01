@@ -30,9 +30,9 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
   );
   const [memo, setMemo] = useState('');
 
-  // 드래그 페인트: 누른 칸의 다음 상태를 칠할 값으로 잡고, 지나는 칸에 그 값을 적용
+  // 드래그: 지나는 칸을 각자 한 단계씩 순환. touched로 드래그당 칸마다 1회만 적용
   const dragging = useRef(false);
-  const paintValue = useRef<Avail>('yes');
+  const touched = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const end = () => {
@@ -42,15 +42,17 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
     return () => window.removeEventListener('mouseup', end);
   }, []);
 
+  const step = (id: string) => setDraft((prev) => ({ ...prev, [id]: NEXT[prev[id]] }));
+
   const startPaint = (id: string) => {
-    const next = NEXT[draft[id]];
-    paintValue.current = next;
     dragging.current = true;
-    setDraft((prev) => ({ ...prev, [id]: next }));
+    touched.current = new Set([id]);
+    step(id);
   };
   const paintOver = (id: string) => {
-    if (!dragging.current) return;
-    setDraft((prev) => (prev[id] === paintValue.current ? prev : { ...prev, [id]: paintValue.current }));
+    if (!dragging.current || touched.current.has(id)) return;
+    touched.current.add(id);
+    step(id);
   };
 
   const handleConfirm = () => {
