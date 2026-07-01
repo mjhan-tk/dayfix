@@ -14,8 +14,8 @@ import {
 const NEXT: Record<Avail, Avail> = { yes: 'maybe', maybe: 'no', no: 'yes' };
 
 const CELL_STYLE: Record<Avail, { bg: string; text: string; label: string }> = {
-  yes: { bg: 'rgba(22,163,74,0.9)', text: '#ffffff', label: '가능' },
-  maybe: { bg: 'rgba(217,119,6,0.9)', text: '#ffffff', label: '조율' },
+  yes: { bg: '#A6D8B8', text: '#14532D', label: '가능' },
+  maybe: { bg: '#ECC58A', text: '#7C3A06', label: '조율' },
   no: { bg: '#EEF0F2', text: '#94a3b8', label: '불가' },
 };
 

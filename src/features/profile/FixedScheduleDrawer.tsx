@@ -10,7 +10,7 @@ const NEXT: Record<FixedState, FixedState> = { ok: 'avoid', avoid: 'busy', busy:
 
 const STYLE: Record<FixedState, { bg: string; text: string; label: string }> = {
   ok: { bg: 'transparent', text: '#94a3b8', label: '' },
-  avoid: { bg: 'rgba(217,119,6,0.9)', text: '#ffffff', label: '기피' },
+  avoid: { bg: '#ECC58A', text: '#7C3A06', label: '기피' },
   busy: { bg: '#E2E5E9', text: '#64748b', label: '불가' },
 };
 
