@@ -1,5 +1,5 @@
-import { Fragment, useState } from 'react';
-import { cn, type OverlayProps } from '@thakicloud/shared';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { Textarea, cn, type OverlayProps } from '@thakicloud/shared';
 import { ResponsiveDrawer } from '@/components/ResponsiveDrawer';
 import {
   ALL_SLOTS,
@@ -28,12 +28,36 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
   const [draft, setDraft] = useState<Record<string, Avail>>(() =>
     Object.fromEntries(ALL_SLOTS.map((s) => [s.id, getResponse({}, member.id, s).avail])),
   );
+  const [memo, setMemo] = useState('');
 
-  const cycle = (id: string) => setDraft((prev) => ({ ...prev, [id]: NEXT[prev[id]] }));
+  // 드래그 페인트: 누른 칸의 다음 상태를 칠할 값으로 잡고, 지나는 칸에 그 값을 적용
+  const dragging = useRef(false);
+  const paintValue = useRef<Avail>('yes');
+
+  useEffect(() => {
+    const end = () => {
+      dragging.current = false;
+    };
+    window.addEventListener('mouseup', end);
+    return () => window.removeEventListener('mouseup', end);
+  }, []);
+
+  const startPaint = (id: string) => {
+    const next = NEXT[draft[id]];
+    paintValue.current = next;
+    dragging.current = true;
+    setDraft((prev) => ({ ...prev, [id]: next }));
+  };
+  const paintOver = (id: string) => {
+    if (!dragging.current) return;
+    setDraft((prev) => (prev[id] === paintValue.current ? prev : { ...prev, [id]: paintValue.current }));
+  };
 
   const handleConfirm = () => {
     const result: Record<string, CellResponse> = {};
-    for (const s of ALL_SLOTS) result[s.id] = { avail: draft[s.id] };
+    for (const s of ALL_SLOTS) {
+      result[s.id] = { avail: draft[s.id], ...(memo.trim() ? { note: memo.trim() } : {}) };
+    }
     onConfirm?.(result);
   };
 
@@ -41,56 +65,74 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
     <ResponsiveDrawer
       {...restProps}
       title={`${member.name}님, 가능한 시간을 알려주세요`}
-      description="칸을 눌러 가능 → 조율 → 불가로 바꿔요. 캘린더 기반으로 미리 채워뒀어요."
+      description="드래그해 가능·조율·불가를 표시하세요."
       onCancel={onCancel}
       onConfirm={handleConfirm}
       cancelUI="취소"
       confirmUI="응답 저장"
     >
-      <div className="flex flex-col gap-3 pt-3">
-        <div className="flex items-center gap-3 text-11 text-text-muted">
-          {(['yes', 'maybe', 'no'] as Avail[]).map((a) => (
-            <span key={a} className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: CELL_STYLE[a].bg }} />
-              {CELL_STYLE[a].label}
-            </span>
-          ))}
+      <div className="flex flex-col gap-5 pt-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3 text-11 text-text-muted">
+            {(['yes', 'maybe', 'no'] as Avail[]).map((a) => (
+              <span key={a} className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: CELL_STYLE[a].bg }} />
+                {CELL_STYLE[a].label}
+              </span>
+            ))}
+          </div>
+
+          <div
+            className="grid select-none gap-1"
+            style={{ gridTemplateColumns: '46px repeat(5, minmax(0, 1fr))' }}
+          >
+            <div />
+            {WEEK_DAYS.map((d) => (
+              <div key={d.key} className="flex flex-col items-center pb-1">
+                <span className="text-12 font-semibold text-text">{d.key}</span>
+                <span className="text-11 text-text-muted">7/{d.date}</span>
+              </div>
+            ))}
+
+            {HOURS.map((hour) => (
+              <Fragment key={hour}>
+                <div className="flex items-center justify-end pr-1 text-11 text-text-muted">
+                  {hour}:00
+                </div>
+                {WEEK_DAYS.map((d) => {
+                  const id = `${d.key}-${hour}`;
+                  const avail = draft[id];
+                  const style = CELL_STYLE[avail];
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onMouseDown={() => startPaint(id)}
+                      onMouseOver={() => paintOver(id)}
+                      style={{ backgroundColor: style.bg, color: style.text }}
+                      className={cn(
+                        'flex h-9 w-full items-center justify-center rounded-md text-11 font-medium transition-transform active:scale-95',
+                      )}
+                    >
+                      {style.label}
+                    </button>
+                  );
+                })}
+              </Fragment>
+            ))}
+          </div>
         </div>
 
-        <div className="grid gap-1" style={{ gridTemplateColumns: '46px repeat(5, minmax(0, 1fr))' }}>
-          <div />
-          {WEEK_DAYS.map((d) => (
-            <div key={d.key} className="flex flex-col items-center pb-1">
-              <span className="text-12 font-semibold text-text">{d.key}</span>
-              <span className="text-11 text-text-muted">7/{d.date}</span>
-            </div>
-          ))}
-
-          {HOURS.map((hour) => (
-            <Fragment key={hour}>
-              <div className="flex items-center justify-end pr-1 text-11 text-text-muted">
-                {hour}:00
-              </div>
-              {WEEK_DAYS.map((d) => {
-                const id = `${d.key}-${hour}`;
-                const avail = draft[id];
-                const style = CELL_STYLE[avail];
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => cycle(id)}
-                    style={{ backgroundColor: style.bg, color: style.text }}
-                    className={cn(
-                      'flex h-9 w-full items-center justify-center rounded-md text-11 font-medium transition-transform active:scale-95',
-                    )}
-                  >
-                    {style.label}
-                  </button>
-                );
-              })}
-            </Fragment>
-          ))}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-13 font-medium text-text">
+            메모 <span className="font-normal text-text-muted">(선택)</span>
+          </span>
+          <Textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            rows={2}
+            placeholder="예: 화·목은 외근이라 오전만 가능해요"
+          />
         </div>
       </div>
     </ResponsiveDrawer>
