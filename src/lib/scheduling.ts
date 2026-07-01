@@ -108,14 +108,16 @@ function generateAvail(memberId: string, slot: Slot): CellResponse {
       if (hour === 13 || hour === 14)
         return { avail: 'maybe', conditions: ['avoid-lunch'], note: '점심 직후는 피하고 싶어요' };
       return YES;
-    case 'u3': // 이서연 — 화 오전 외근 · 목 늦은 오후 빠듯
+    case 'u3': // 이서연 — 화 오전 외근 · 목 늦은 오후 빠듯 · 점심 직후 나른
       if (dayKey === '화' && hour <= 11) return { avail: 'no', note: '오전 외근' };
       if (dayKey === '목' && hour >= 16) return { avail: 'maybe', note: '앞뒤 일정 빠듯' };
+      if (hour === 13) return { avail: 'maybe', note: '점심 직후 집중 어려움' };
       return YES;
-    case 'u4': // 최유나 — 금 오전 반차 · 월 오후 집중업무
+    case 'u4': // 최유나 — 금 오전 반차 · 월 오후 집중업무 · 점심 직후 미팅 준비
       if (dayKey === '금' && hour <= 11) return { avail: 'no', note: '오전 반차' };
       if (dayKey === '월' && (hour === 15 || hour === 16))
         return { avail: 'maybe', note: '집중 업무 시간' };
+      if (hour === 13) return { avail: 'maybe', note: '점심 직후 미팅 준비' };
       return YES;
     case 'u5': // 박지훈(선택) — 화·목 외근
       if (dayKey === '화') return { avail: 'no', note: '화요일 외근' };

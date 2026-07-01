@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Badge, Button, Typography, useOverlay } from '@thakicloud/shared';
+import { Button, Typography, useOverlay } from '@thakicloud/shared';
 import { AppShell } from '@/components/AppShell';
 import { Avatar } from '@/components/Avatar';
 import {
@@ -21,7 +21,15 @@ import { RespondDrawer } from './RespondDrawer';
 import { SlotDetailModal } from './SlotDetailModal';
 import { SlotRanking } from './SlotRanking';
 
-export function SchedulingPage({ onBack }: { onBack?: () => void }) {
+export function SchedulingPage({
+  onBack,
+  onCreate,
+  onProfile,
+}: {
+  onBack?: () => void;
+  onCreate?: () => void;
+  onProfile?: () => void;
+}) {
   const { openOverlay } = useOverlay();
   const [responses, setResponses] = useState<Responses>({});
   const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>();
@@ -30,7 +38,6 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
 
   const scored = useMemo(() => scoreSlots(MEMBERS, ALL_SLOTS, responses), [responses]);
   const top = useMemo(() => topSlots(scored, 3), [scored]);
-  const topIds = useMemo(() => new Set(top.map((s) => s.slot.id)), [top]);
 
   const requiredCount = MEMBERS.filter((m) => m.role === 'required').length;
   const optionalCount = MEMBERS.length - requiredCount;
@@ -70,7 +77,14 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
     : undefined;
 
   return (
-    <AppShell activeNav="meetings" primaryLabel="내 가능 시간 응답" onPrimaryAction={handleRespond} onNavHome={onBack} currentUser={me}>
+    <AppShell
+      activeNav="meetings"
+      primaryLabel="새 회의"
+      onPrimaryAction={onCreate}
+      onNavHome={onBack}
+      onProfileClick={onProfile}
+      currentUser={me}
+    >
       <div className="flex flex-col gap-6">
         {onBack && (
           <button
@@ -102,10 +116,7 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
 
         {/* 회의 헤더 */}
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Typography.Title level={2}>디자인 시스템 스프린트 킥오프</Typography.Title>
-            <Badge theme="blu" type="solid" size="sm">시간 조율 중</Badge>
-          </div>
+          <Typography.Title level={3}>디자인 시스템 스프린트 킥오프</Typography.Title>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="flex -space-x-1.5">
               {MEMBERS.map((m) => (
@@ -127,11 +138,11 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
 
         {/* 추천 (결정) */}
         <section className="flex flex-col gap-3">
-          <div className="flex items-end justify-between">
+          <div className="flex items-end justify-between gap-3">
             <div className="flex flex-col gap-0.5">
               <span className="text-13 font-semibold text-text-muted">추천 시간</span>
               <span className="text-11 text-text-muted">
-                가장 괜찮은 3개 — 카드를 누르면 자세히 보고 확정할 수 있어요.
+                카드를 누르면 자세히 보고 확정할 수 있어요.
               </span>
             </div>
             <Button variant="primary" size="sm" onClick={handleRespond}>
@@ -146,12 +157,11 @@ export function SchedulingPage({ onBack }: { onBack?: () => void }) {
           <div className="flex flex-col gap-0.5">
             <span className="text-13 font-semibold text-text-muted">답변 결과</span>
             <span className="text-11 text-text-muted">
-              이번 주 전체 시간대 가용성 — 진할수록 가능 인원이 많아요. 칸을 누르면 자세히 보고 확정할 수 있어요.
+              진할수록 가능 인원이 많아요. 칸을 누르면 자세히 보고 확정할 수 있어요.
             </span>
           </div>
           <AvailabilityHeatmap
             scored={scored}
-            topIds={topIds}
             selectedSlotId={selectedSlotId}
             onOpenSlot={openSlotDetail}
           />

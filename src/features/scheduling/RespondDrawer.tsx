@@ -1,5 +1,6 @@
 import { Fragment, useState } from 'react';
-import { Overlay, cn, type OverlayProps } from '@thakicloud/shared';
+import { cn, type OverlayProps } from '@thakicloud/shared';
+import { ResponsiveDrawer } from '@/components/ResponsiveDrawer';
 import {
   ALL_SLOTS,
   HOURS,
@@ -37,14 +38,10 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
   };
 
   return (
-    <Overlay.Template
+    <ResponsiveDrawer
       {...restProps}
-      type="drawer-horizontal"
-      size="md"
       title={`${member.name}님, 가능한 시간을 알려주세요`}
       description="칸을 눌러 가능 → 조율 → 불가로 바꿔요. 캘린더 기반으로 미리 채워뒀어요."
-      showDim
-      closeOnDimClick
       onCancel={onCancel}
       onConfirm={handleConfirm}
       cancelUI="취소"
@@ -96,6 +93,6 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
           ))}
         </div>
       </div>
-    </Overlay.Template>
+    </ResponsiveDrawer>
   );
 }

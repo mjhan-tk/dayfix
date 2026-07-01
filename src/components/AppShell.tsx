@@ -13,6 +13,7 @@ type AppShellProps = {
   primaryLabel?: string;
   onPrimaryAction?: () => void;
   onNavHome?: () => void;
+  onProfileClick?: () => void;
   currentUser?: AvatarMember;
   children: ReactNode;
 };
@@ -22,6 +23,7 @@ export function AppShell({
   primaryLabel = '회의 잡기',
   onPrimaryAction,
   onNavHome,
+  onProfileClick,
   currentUser,
   children,
 }: AppShellProps) {
@@ -62,7 +64,16 @@ export function AppShell({
             <Button variant="primary" size="sm" onClick={onPrimaryAction}>
               {primaryLabel}
             </Button>
-            {currentUser && <Avatar member={currentUser} size="sm" />}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={onProfileClick}
+                className="rounded-full transition-transform hover:scale-105"
+                aria-label="내 고정 스케줄"
+              >
+                <Avatar member={currentUser} size="sm" />
+              </button>
+            )}
           </div>
         </div>
       </header>

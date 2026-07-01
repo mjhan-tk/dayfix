@@ -4,28 +4,36 @@ import { HOURS, WEEK_DAYS, type ScoredSlot } from '@/lib/scheduling';
 
 const GRAY_BLOCKED = '#EEF0F2';
 
+// 가능 인원수 → 색 (파스텔 초록 단일 톤: 1–3 연함 / 4–5 중간 / 6 진함)
+const GREEN = {
+  light: '#DCF1E4', // 1–3
+  medium: '#A6D8B8', // 4–5
+  dark: '#6CBF92', // 6
+};
+
+function cellBg(count: number): string {
+  if (count >= 6) return GREEN.dark;
+  if (count >= 4) return GREEN.medium;
+  return GREEN.light;
+}
+
 type AvailabilityHeatmapProps = {
   scored: ScoredSlot[];
-  topIds: Set<string>;
   selectedSlotId?: string;
   onOpenSlot: (scored: ScoredSlot) => void;
 };
 
 function HeatCell({
   sc,
-  isTop,
   selected,
   onOpen,
 }: {
   sc: ScoredSlot;
-  isTop: boolean;
   selected: boolean;
   onOpen: () => void;
 }) {
   const blocked = sc.requiredBlocked.length > 0;
-  const alpha = Math.max(0.16, sc.score / 100);
-  const bg = blocked ? GRAY_BLOCKED : `rgba(22,163,74,${alpha})`;
-  const lightText = !blocked && alpha >= 0.55;
+  const bg = blocked ? GRAY_BLOCKED : cellBg(sc.availableCount);
 
   const tip = `${sc.availableCount}명 가능 · 조율 ${sc.negotiable.length} · 불가 ${
     sc.requiredBlocked.length + sc.optionalBlocked.length
@@ -38,15 +46,13 @@ function HeatCell({
         onClick={onOpen}
         style={{ backgroundColor: bg }}
         className={cn(
-          'relative flex h-9 w-full items-center justify-center rounded-md text-12 font-semibold transition-all hover:ring-2 hover:ring-primary/60',
+          'flex h-9 w-full items-center justify-center rounded-md text-12 font-semibold transition-all hover:ring-2 hover:ring-primary/60',
           selected && 'ring-2 ring-primary',
-          isTop && 'ring-1 ring-[#15803d]',
         )}
       >
-        <span className={blocked ? 'text-text-subtle' : lightText ? 'text-white' : 'text-[#166534]'}>
+        <span className={blocked ? 'text-text-subtle' : 'font-bold text-[#14532D]'}>
           {sc.availableCount}
         </span>
-        {isTop && <span className="absolute -right-1 -top-1.5 text-11 leading-none">⭐</span>}
       </button>
     </Tooltip>
   );
@@ -54,7 +60,6 @@ function HeatCell({
 
 export function AvailabilityHeatmap({
   scored,
-  topIds,
   selectedSlotId,
   onOpenSlot,
 }: AvailabilityHeatmapProps) {
@@ -65,17 +70,17 @@ export function AvailabilityHeatmap({
     <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-11 text-text-muted">
         <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="flex h-3 w-8 overflow-hidden rounded-sm">
-            <span className="flex-1" style={{ backgroundColor: 'rgba(22,163,74,0.25)' }} />
-            <span className="flex-1" style={{ backgroundColor: 'rgba(22,163,74,0.6)' }} />
-            <span className="flex-1" style={{ backgroundColor: 'rgba(22,163,74,1)' }} />
+          <span className="flex h-3 w-10 overflow-hidden rounded-sm">
+            <span className="flex-1" style={{ backgroundColor: GREEN.light }} />
+            <span className="flex-1" style={{ backgroundColor: GREEN.medium }} />
+            <span className="flex-1" style={{ backgroundColor: GREEN.dark }} />
           </span>
           적게 → 많이 가능
         </span>
         <span className="flex items-center gap-1 whitespace-nowrap">
           <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: GRAY_BLOCKED }} /> 필수 불가
         </span>
-        <span className="whitespace-nowrap">⭐ 추천 · 숫자 = 가능 인원</span>
+        <span className="whitespace-nowrap">숫자 = 가능 인원</span>
       </div>
 
       <div className="grid gap-1" style={{ gridTemplateColumns: gridCols }}>
@@ -100,7 +105,6 @@ export function AvailabilityHeatmap({
                 <HeatCell
                   key={id}
                   sc={sc}
-                  isTop={topIds.has(id)}
                   selected={selectedSlotId === id}
                   onOpen={() => onOpenSlot(sc)}
                 />
