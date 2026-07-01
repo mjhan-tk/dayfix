@@ -6,10 +6,12 @@ import {
   CheckIcon,
   ContextMenu,
   Typography,
+  useOverlay,
 } from '@thakicloud/shared';
 import { AppShell } from '@/components/AppShell';
 import { getMemberById, CURRENT_USER_ID } from '@/lib/scheduling';
-import { sortedCoord, type CoordMeeting, type CoordSort } from '@/lib/home';
+import { RespondDrawer } from '@/features/scheduling/RespondDrawer';
+import { sortCoord, type CoordMeeting, type CoordSort } from '@/lib/home';
 import { UpcomingPanel } from './UpcomingPanel';
 
 // 잉크(어두운 무채색) 버튼 — TDS엔 dark solid 변형이 없어 디자인 토큰으로 입힌다.
@@ -20,7 +22,15 @@ const INK_BUTTON_STYLE: React.CSSProperties = {
 };
 
 // 미정(조율 중) 카드 한 종류 — dot·진행·버튼 위계로 항목이 자기 상태를 설명한다.
-function CoordCard({ item, onOpen }: { item: CoordMeeting; onOpen: () => void }) {
+function CoordCard({
+  item,
+  onOpen,
+  onRespond,
+}: {
+  item: CoordMeeting;
+  onOpen: () => void;
+  onRespond: () => void;
+}) {
   const by = getMemberById(item.byId);
   const isMine = item.byId === CURRENT_USER_ID;
   const pct = Math.round((item.responded / item.total) * 100);
@@ -74,11 +84,26 @@ function CoordCard({ item, onOpen }: { item: CoordMeeting; onOpen: () => void })
             확정하기
           </Button>
         ) : !item.iResponded ? (
-          <Button variant="primary" size="sm">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRespond();
+            }}
+          >
             응답하기
           </Button>
         ) : (
-          <Button variant="secondary" appearance="outline" size="sm">
+          <Button
+            variant="secondary"
+            appearance="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRespond();
+            }}
+          >
             응답 수정
           </Button>
         )}
@@ -140,21 +165,40 @@ function Section({
 }
 
 export function HomePage({
+  coord,
   onOpenMeeting,
   onCreate,
+  onProfile,
 }: {
+  coord: CoordMeeting[];
   onOpenMeeting: () => void;
   onCreate: () => void;
+  onProfile: () => void;
 }) {
+  const { openOverlay } = useOverlay();
   const me = getMemberById(CURRENT_USER_ID)!;
   const [sort, setSort] = useState<CoordSort>('recent');
-  const coord = useMemo(() => sortedCoord(sort), [sort]);
+  const sortedList = useMemo(() => sortCoord(coord, sort), [coord, sort]);
+
+  const handleRespond = () => {
+    void openOverlay({
+      component: RespondDrawer,
+      props: { member: me },
+      options: { type: 'drawer-horizontal', size: 'md' },
+    });
+  };
 
   return (
-    <AppShell activeNav="meetings" primaryLabel="새 회의" onPrimaryAction={onCreate} currentUser={me}>
+    <AppShell
+      activeNav="meetings"
+      primaryLabel="새 회의"
+      onPrimaryAction={onCreate}
+      onProfileClick={onProfile}
+      currentUser={me}
+    >
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <Typography.Title level={2}>안녕하세요, {me.name}님</Typography.Title>
+          <Typography.Title level={3}>안녕하세요, {me.name}님</Typography.Title>
           <Typography.Text variant="paragraph" color="text-muted">
             오늘 일정과 조율 중인 회의를 한눈에 확인하세요.
           </Typography.Text>
@@ -171,8 +215,8 @@ export function HomePage({
               hint="아직 시간이 정해지지 않은 회의"
               right={<SortMenu sort={sort} onChange={setSort} />}
             >
-              {coord.map((c) => (
-                <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} />
+              {sortedList.map((c) => (
+                <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} onRespond={handleRespond} />
               ))}
             </Section>
           </div>
