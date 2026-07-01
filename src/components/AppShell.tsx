@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Button, cn } from '@thakicloud/shared';
+import { useState, type ReactNode } from 'react';
+import { Button, RefreshIcon, cn } from '@thakicloud/shared';
 import { Avatar, type AvatarMember } from './Avatar';
 
 const NAV_ITEMS = [
@@ -14,6 +14,7 @@ type AppShellProps = {
   onPrimaryAction?: () => void;
   onNavHome?: () => void;
   onProfileClick?: () => void;
+  onRefresh?: () => void;
   currentUser?: AvatarMember;
   children: ReactNode;
 };
@@ -24,9 +25,17 @@ export function AppShell({
   onPrimaryAction,
   onNavHome,
   onProfileClick,
+  onRefresh,
   currentUser,
   children,
 }: AppShellProps) {
+  const [spinning, setSpinning] = useState(false);
+
+  const handleRefresh = () => {
+    setSpinning(true);
+    onRefresh?.();
+    window.setTimeout(() => setSpinning(false), 700);
+  };
 
   return (
     <div className="flex min-h-full flex-col bg-surface-muted">
@@ -60,7 +69,17 @@ export function AppShell({
           </nav>
 
           {/* 우측 액션 */}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              aria-label="새로고침"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-text"
+            >
+              <span className={cn('flex', spinning && 'animate-spin')}>
+                <RefreshIcon size="sm" />
+              </span>
+            </button>
             <Button variant="primary" size="sm" onClick={onPrimaryAction}>
               {primaryLabel}
             </Button>
