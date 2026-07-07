@@ -10,6 +10,7 @@ import {
   type CellResponse,
 } from '@/lib/scheduling';
 import { fixedToAvail, getMySchedule } from '@/lib/my-schedule';
+import { CAL_PROVIDERS } from '@/lib/calendar-sync';
 
 const NEXT: Record<Avail, Avail> = { yes: 'maybe', maybe: 'no', no: 'yes' };
 
@@ -137,11 +138,28 @@ export function RespondDrawer({ onConfirm, onCancel, ...restProps }: RespondDraw
                   const id = `${d.key}-${hour}`;
                   const committed = MY_COMMITMENTS[id];
                   if (committed) {
+                    const src = committed.source;
+                    const label = src === 'dayfix' ? 'dayfix' : CAL_PROVIDERS[src].name;
+                    const dot = src === 'dayfix' ? 'var(--semantic-color-primary)' : CAL_PROVIDERS[src].color;
+                    const openEvent = () =>
+                      window.open(
+                        src === 'dayfix' ? window.location.origin : CAL_PROVIDERS[src].url,
+                        '_blank',
+                        'noopener,noreferrer',
+                      );
                     return (
-                      <Tooltip key={id} content={`기존 일정 · ${committed}`} direction="top">
-                        <div className="flex h-9 w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-surface-muted px-1 text-[10px] font-medium text-text-muted">
-                          <span className="truncate">{committed}</span>
-                        </div>
+                      <Tooltip key={id} content={`${label} · ${committed.title} — 클릭해 열기`} direction="top">
+                        <button
+                          type="button"
+                          onClick={openEvent}
+                          className="flex h-9 w-full items-center justify-center gap-1 overflow-hidden rounded-md border border-dashed border-border bg-surface-muted px-1 text-[10px] font-medium text-text-muted transition-colors hover:border-primary hover:text-text"
+                        >
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: dot }}
+                          />
+                          <span className="truncate">{committed.title}</span>
+                        </button>
                       </Tooltip>
                     );
                   }

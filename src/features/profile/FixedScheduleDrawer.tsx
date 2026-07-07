@@ -3,6 +3,12 @@ import { RefreshIcon, cn, type OverlayProps } from '@thakicloud/shared';
 import { ResponsiveDrawer } from '@/components/ResponsiveDrawer';
 import { HOURS, WEEK_DAYS } from '@/lib/scheduling';
 import { getMySchedule, setMySchedule, type FixedState } from '@/lib/my-schedule';
+import {
+  CAL_PROVIDERS,
+  setConnectedCalendar,
+  useConnectedCalendar,
+  type CalProvider,
+} from '@/lib/calendar-sync';
 
 const NEXT: Record<FixedState, FixedState> = { ok: 'avoid', avoid: 'busy', busy: 'ok' };
 
@@ -19,6 +25,8 @@ type FixedScheduleDrawerProps = Omit<OverlayProps, 'onConfirm'> & {
 export function FixedScheduleDrawer({ onConfirm, onCancel, ...restProps }: FixedScheduleDrawerProps) {
   const [draft, setDraft] = useState<Record<string, FixedState>>(() => ({ ...getMySchedule() }));
   const [spinning, setSpinning] = useState(false);
+  const [showConnect, setShowConnect] = useState(false);
+  const connected = useConnectedCalendar();
 
   const handleSave = () => {
     setMySchedule({ ...draft });
@@ -66,6 +74,73 @@ export function FixedScheduleDrawer({ onConfirm, onCancel, ...restProps }: Fixed
       confirmUI="저장"
     >
       <div className="flex flex-col gap-3 pt-3">
+        {/* 외부 캘린더 연동 */}
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-muted px-3 py-2.5">
+          <div className="flex items-center gap-2.5">
+            {connected ? (
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-md text-11 font-bold text-white"
+                style={{ backgroundColor: CAL_PROVIDERS[connected].color }}
+              >
+                {CAL_PROVIDERS[connected].short || '📅'}
+              </span>
+            ) : (
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-surface text-text-muted">
+                📅
+              </span>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="text-12 font-medium text-text">
+                {connected ? `${CAL_PROVIDERS[connected].name} 연동됨` : '연동된 캘린더 없음'}
+              </span>
+              <span className="text-11 text-text-muted">기존 일정을 자동으로 불러와 응답에 반영해요</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowConnect((v) => !v)}
+              className="shrink-0 text-11 text-text-muted transition-colors hover:text-text"
+            >
+              {showConnect ? '닫기' : '관리'}
+            </button>
+          </div>
+
+          {showConnect && (
+            <div className="flex flex-col gap-0.5 border-t border-border pt-2">
+              {(['google', 'outlook', 'apple'] as CalProvider[]).map((p) => {
+                const isConn = connected === p;
+                return (
+                  <div key={p} className="flex items-center gap-2.5 rounded-md px-1 py-1.5">
+                    <span
+                      className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white"
+                      style={{ backgroundColor: CAL_PROVIDERS[p].color }}
+                    >
+                      {CAL_PROVIDERS[p].short || '📅'}
+                    </span>
+                    <span className="flex-1 text-12 text-text">{CAL_PROVIDERS[p].name}</span>
+                    {isConn ? (
+                      <button
+                        type="button"
+                        onClick={() => setConnectedCalendar(null)}
+                        className="rounded-md px-2 py-0.5 text-11 font-medium text-text-muted transition-colors hover:text-text"
+                      >
+                        연결됨
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConnectedCalendar(p)}
+                        className="rounded-md bg-primary px-2 py-0.5 text-11 font-medium text-white"
+                      >
+                        연결
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center justify-between text-11 text-text-muted">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">

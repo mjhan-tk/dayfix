@@ -47,10 +47,13 @@ export function hasResponded(id: string): boolean {
 }
 
 // 현재 사용자(나)의 이미 확정된 일정 — 응답 격자에 '기존 일정'으로 겹쳐 보여준다.
-// (예정된 일정 중 내가 참석하는 회의를 이번 주 격자 좌표로 매핑)
-export const MY_COMMITMENTS: Record<string, string> = {
-  '수-10': '디자인 리뷰',
-  '목-16': '스프린트 회고',
+// source: 'dayfix'는 여기서 조율한 회의, 그 외는 외부 캘린더에서 동기화된 일정.
+export type CommitmentSource = 'dayfix' | 'google' | 'outlook' | 'apple';
+export type Commitment = { title: string; source: CommitmentSource };
+
+export const MY_COMMITMENTS: Record<string, Commitment> = {
+  '수-10': { title: '디자인 리뷰', source: 'dayfix' },
+  '목-16': { title: '스프린트 회고', source: 'google' },
 };
 
 // ──────────────────────────────────────────────────────────────
