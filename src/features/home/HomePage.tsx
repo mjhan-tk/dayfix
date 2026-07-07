@@ -183,7 +183,7 @@ export function HomePage({
   const handleRespond = () => {
     void openOverlay({
       component: RespondDrawer,
-      props: { member: me },
+      props: {},
       options: { type: 'drawer-horizontal', size: 'md' },
     });
   };

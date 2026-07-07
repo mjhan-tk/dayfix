@@ -53,7 +53,7 @@ export function SchedulingPage({
   const handleRespond = async () => {
     const result = (await openOverlay({
       component: RespondDrawer,
-      props: { member: me },
+      props: {},
       options: { type: 'drawer-horizontal', size: 'md' },
     })) as Record<string, CellResponse> | undefined;
 

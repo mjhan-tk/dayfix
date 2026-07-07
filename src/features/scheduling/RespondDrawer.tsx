@@ -1,15 +1,15 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { RefreshIcon, Textarea, cn, type OverlayProps } from '@thakicloud/shared';
+import { RefreshIcon, Textarea, Tooltip, cn, type OverlayProps } from '@thakicloud/shared';
 import { ResponsiveDrawer } from '@/components/ResponsiveDrawer';
 import {
   ALL_SLOTS,
   HOURS,
+  MY_COMMITMENTS,
   WEEK_DAYS,
-  getResponse,
   type Avail,
   type CellResponse,
-  type Member,
 } from '@/lib/scheduling';
+import { fixedToAvail, getMySchedule } from '@/lib/my-schedule';
 
 const NEXT: Record<Avail, Avail> = { yes: 'maybe', maybe: 'no', no: 'yes' };
 
@@ -20,14 +20,20 @@ const CELL_STYLE: Record<Avail, { bg: string; text: string; label: string }> = {
 };
 
 type RespondDrawerProps = Omit<OverlayProps, 'onConfirm'> & {
-  member: Member;
   onConfirm?: (responses: Record<string, CellResponse>) => void;
 };
 
-export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: RespondDrawerProps) {
-  // 캘린더 기반 초기 응답(되돌리기 기준)
-  const initialDraft = (): Record<string, Avail> =>
-    Object.fromEntries(ALL_SLOTS.map((s) => [s.id, getResponse({}, member.id, s).avail]));
+export function RespondDrawer({ onConfirm, onCancel, ...restProps }: RespondDrawerProps) {
+  // 프리필: 내 고정 스케줄 → 응답 기본값(가능/조율/불가). 이미 확정된 일정은 불가.
+  const initialDraft = (): Record<string, Avail> => {
+    const schedule = getMySchedule();
+    return Object.fromEntries(
+      ALL_SLOTS.map((s) => [
+        s.id,
+        MY_COMMITMENTS[s.id] ? 'no' : fixedToAvail(schedule[s.id] ?? 'ok'),
+      ]),
+    );
+  };
 
   const [draft, setDraft] = useState<Record<string, Avail>>(initialDraft);
   const [memo, setMemo] = useState('');
@@ -86,13 +92,17 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
       <div className="flex flex-col gap-5 pt-3">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between text-11 text-text-muted">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               {(['yes', 'maybe', 'no'] as Avail[]).map((a) => (
                 <span key={a} className="flex items-center gap-1.5">
                   <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: CELL_STYLE[a].bg }} />
                   {CELL_STYLE[a].label}
                 </span>
               ))}
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm border border-dashed border-border bg-surface-muted" />
+                기존 일정
+              </span>
             </div>
             <button
               type="button"
@@ -125,6 +135,16 @@ export function RespondDrawer({ member, onConfirm, onCancel, ...restProps }: Res
                 </div>
                 {WEEK_DAYS.map((d) => {
                   const id = `${d.key}-${hour}`;
+                  const committed = MY_COMMITMENTS[id];
+                  if (committed) {
+                    return (
+                      <Tooltip key={id} content={`기존 일정 · ${committed}`} direction="top">
+                        <div className="flex h-9 w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-surface-muted px-1 text-[10px] font-medium text-text-muted">
+                          <span className="truncate">{committed}</span>
+                        </div>
+                      </Tooltip>
+                    );
+                  }
                   const avail = draft[id];
                   const style = CELL_STYLE[avail];
                   return (

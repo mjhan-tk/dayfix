@@ -2,9 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { RefreshIcon, cn, type OverlayProps } from '@thakicloud/shared';
 import { ResponsiveDrawer } from '@/components/ResponsiveDrawer';
 import { HOURS, WEEK_DAYS } from '@/lib/scheduling';
-
-// 고정 스케줄 상태: 가능(default) / 기피(이 시간대 회의 선호 안 함) / 불가(항상 불가)
-type FixedState = 'ok' | 'avoid' | 'busy';
+import { getMySchedule, setMySchedule, type FixedState } from '@/lib/my-schedule';
 
 const NEXT: Record<FixedState, FixedState> = { ok: 'avoid', avoid: 'busy', busy: 'ok' };
 
@@ -14,22 +12,18 @@ const STYLE: Record<FixedState, { bg: string; text: string; label: string }> = {
   busy: { bg: '#E2E5E9', text: '#64748b', label: '불가' },
 };
 
-// 데모 초기값: 점심 직후(13·14시) 기피, 나머지 가능
-function buildInitial(): Record<string, FixedState> {
-  const init: Record<string, FixedState> = {};
-  for (const d of WEEK_DAYS) {
-    for (const h of HOURS) init[`${d.key}-${h}`] = h === 13 || h === 14 ? 'avoid' : 'ok';
-  }
-  return init;
-}
-
 type FixedScheduleDrawerProps = Omit<OverlayProps, 'onConfirm'> & {
   onConfirm?: () => void;
 };
 
 export function FixedScheduleDrawer({ onConfirm, onCancel, ...restProps }: FixedScheduleDrawerProps) {
-  const [draft, setDraft] = useState<Record<string, FixedState>>(buildInitial);
+  const [draft, setDraft] = useState<Record<string, FixedState>>(() => ({ ...getMySchedule() }));
   const [spinning, setSpinning] = useState(false);
+
+  const handleSave = () => {
+    setMySchedule({ ...draft });
+    onConfirm?.();
+  };
 
   // 드래그: 지나는 칸을 각자 한 단계씩 순환. touched로 드래그당 칸마다 1회만 적용
   const dragging = useRef(false);
@@ -56,7 +50,7 @@ export function FixedScheduleDrawer({ onConfirm, onCancel, ...restProps }: Fixed
   };
 
   const reset = () => {
-    setDraft(buildInitial());
+    setDraft({ ...getMySchedule() });
     setSpinning(true);
     window.setTimeout(() => setSpinning(false), 500);
   };
@@ -67,7 +61,7 @@ export function FixedScheduleDrawer({ onConfirm, onCancel, ...restProps }: Fixed
       title="내 고정 스케줄"
       description="반복되는 일정·선호를 등록해두세요."
       onCancel={onCancel}
-      onConfirm={() => onConfirm?.()}
+      onConfirm={handleSave}
       cancelUI="취소"
       confirmUI="저장"
     >
