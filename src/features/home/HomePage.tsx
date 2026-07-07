@@ -171,7 +171,7 @@ export function HomePage({
   onProfile,
 }: {
   coord: CoordMeeting[];
-  onOpenMeeting: () => void;
+  onOpenMeeting: (id: string) => void;
   onCreate: () => void;
   onProfile: () => void;
 }) {
@@ -207,7 +207,7 @@ export function HomePage({
           <div className="flex flex-col gap-6">
             <Section title="조율 중" right={<SortMenu sort={sort} onChange={setSort} />}>
               {sortedList.map((c) => (
-                <CoordCard key={c.id} item={c} onOpen={onOpenMeeting} onRespond={handleRespond} />
+                <CoordCard key={c.id} item={c} onOpen={() => onOpenMeeting(c.id)} onRespond={handleRespond} />
               ))}
             </Section>
           </div>

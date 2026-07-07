@@ -17,6 +17,17 @@ export function App() {
   const { openOverlay } = useOverlay();
   const [view, setView] = useState<View>('home');
   const [coord, setCoord] = useState<CoordMeeting[]>(INITIAL_COORD);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const openMeeting = (id: string) => {
+    setSelectedId(id);
+    setView('detail');
+  };
+  const deleteMeeting = (id: string) => {
+    setCoord((prev) => prev.filter((c) => c.id !== id));
+    setSelectedId(null);
+    setView('home');
+  };
 
   const openCreate = async () => {
     const created = (await openOverlay({
@@ -39,14 +50,24 @@ export function App() {
     });
   };
 
-  if (view === 'detail') {
-    return <SchedulingPage onBack={() => setView('home')} onCreate={openCreate} onProfile={openProfile} />;
+  const selectedMeeting = coord.find((c) => c.id === selectedId);
+
+  if (view === 'detail' && selectedMeeting) {
+    return (
+      <SchedulingPage
+        meeting={selectedMeeting}
+        onBack={() => setView('home')}
+        onCreate={openCreate}
+        onProfile={openProfile}
+        onDelete={deleteMeeting}
+      />
+    );
   }
 
   return (
     <HomePage
       coord={coord}
-      onOpenMeeting={() => setView('detail')}
+      onOpenMeeting={openMeeting}
       onCreate={openCreate}
       onProfile={openProfile}
     />

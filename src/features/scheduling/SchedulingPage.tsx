@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Button, CheckIcon, Typography, useOverlay } from '@thakicloud/shared';
+import { ActionModal, Button, CheckIcon, DeleteIcon, Typography, useOverlay } from '@thakicloud/shared';
 import { AppShell } from '@/components/AppShell';
 import { Avatar } from '@/components/Avatar';
 import {
   ALL_SLOTS,
   CURRENT_USER_ID,
   MEMBERS,
-  RESPONDED_IDS,
   getMemberById,
-  hasResponded,
   scoreSlots,
   slotTimeRange,
   topSlots,
@@ -16,19 +14,24 @@ import {
   type Responses,
   type ScoredSlot,
 } from '@/lib/scheduling';
+import type { CoordMeeting } from '@/lib/home';
 import { AvailabilityHeatmap } from './AvailabilityHeatmap';
 import { RespondDrawer } from './RespondDrawer';
 import { SlotDetailModal } from './SlotDetailModal';
 import { SlotRanking } from './SlotRanking';
 
 export function SchedulingPage({
+  meeting,
   onBack,
   onCreate,
   onProfile,
+  onDelete,
 }: {
+  meeting: CoordMeeting;
   onBack?: () => void;
   onCreate?: () => void;
   onProfile?: () => void;
+  onDelete?: (id: string) => void;
 }) {
   const { openOverlay } = useOverlay();
   const [responses, setResponses] = useState<Responses>({});
@@ -36,19 +39,43 @@ export function SchedulingPage({
   const [confirmedSlotId, setConfirmedSlotId] = useState<string | undefined>();
   const [savedHint, setSavedHint] = useState(false);
 
-  // 집계·추천은 실제 응답한 사람만 반영(미응답자 기본값으로 인원을 부풀리지 않음)
-  const respondedMembers = useMemo(() => MEMBERS.filter((m) => hasResponded(m.id)), []);
-  const votingComplete = respondedMembers.length === MEMBERS.length;
+  const me = getMemberById(CURRENT_USER_ID)!;
+
+  // 이 회의의 참석자·응답 현황 — 카드 세팅값 기준
+  const total = meeting.total;
+  const respondedCount = meeting.responded;
+  const members = useMemo(() => MEMBERS.slice(0, total), [total]);
+  const votedIds = useMemo(
+    () => new Set(members.slice(0, respondedCount).map((m) => m.id)),
+    [members, respondedCount],
+  );
+  const respondedMembers = useMemo(() => members.filter((m) => votedIds.has(m.id)), [members, votedIds]);
+  const votingComplete = respondedCount >= total;
+
   const scored = useMemo(
     () => scoreSlots(respondedMembers, ALL_SLOTS, responses),
     [respondedMembers, responses],
   );
   const top = useMemo(() => topSlots(scored, 3), [scored]);
 
-  const requiredCount = MEMBERS.filter((m) => m.role === 'required').length;
-  const optionalCount = MEMBERS.length - requiredCount;
-  const respondedCount = RESPONDED_IDS.size;
-  const me = getMemberById(CURRENT_USER_ID)!;
+  const requiredCount = members.filter((m) => m.role === 'required').length;
+  const optionalCount = members.length - requiredCount;
+
+  const handleDelete = async () => {
+    const confirmed = await openOverlay({
+      component: ActionModal,
+      props: {
+        actionConfig: {
+          title: '회의를 삭제할까요?',
+          subtitle: `'${meeting.title}' 조율을 삭제하면 되돌릴 수 없어요.`,
+          actionButtonText: '삭제',
+          actionButtonVariant: 'danger',
+          cancelButtonText: '취소',
+        },
+      },
+    });
+    if (confirmed) onDelete?.(meeting.id);
+  };
 
   const handleRespond = async () => {
     const result = (await openOverlay({
@@ -122,11 +149,17 @@ export function SchedulingPage({
 
         {/* 회의 헤더 */}
         <div className="flex flex-col gap-3">
-          <Typography.Title level={3}>디자인 시스템 스프린트 킥오프</Typography.Title>
+          <div className="flex items-start justify-between gap-3">
+            <Typography.Title level={3}>{meeting.title}</Typography.Title>
+            <Button variant="danger" appearance="outline" size="sm" onClick={handleDelete}>
+              <DeleteIcon size="xs" />
+              삭제
+            </Button>
+          </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="flex flex-wrap items-center gap-2.5">
-              {MEMBERS.map((m) => {
-                const voted = hasResponded(m.id);
+              {members.map((m) => {
+                const voted = votedIds.has(m.id);
                 return (
                   <span key={m.id} className="relative inline-flex">
                     <Avatar
@@ -148,7 +181,7 @@ export function SchedulingPage({
               })}
             </div>
             <span className="text-12 text-text-muted">
-              <span className="font-medium text-text">{respondedCount}/{MEMBERS.length}</span> 응답
+              <span className="font-medium text-text">{respondedCount}/{total}</span> 응답
               <span className="px-1.5 text-text-subtle">·</span>
               필수 {requiredCount} · 선택 {optionalCount}
             </span>
@@ -169,7 +202,7 @@ export function SchedulingPage({
             <div className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-border bg-surface px-4 py-8 text-center">
               <span className="text-13 font-medium text-text">아직 응답을 모으는 중이에요</span>
               <span className="text-12 text-text-muted">
-                {MEMBERS.length}명 모두 응답하면 추천 시간을 알려드려요
+                {total}명 모두 응답하면 추천 시간을 알려드려요
               </span>
             </div>
           )}
